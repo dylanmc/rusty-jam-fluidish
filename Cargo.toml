@@ -1,0 +1,10 @@
+[package]
+name = "grid_world"
+version = "0.1.0"
+authors = ["mecodegoodsomeday <dylan.mcnamee@gmail.com>, microbike <colinomcnamee@gmail.com"]
+edition = "2018"
+
+[dependencies]
+macroquad = "0.3.8"
+sapp-wasm = "=0.1.26"
+shipyard = { git = "https://github.com/leudz/shipyard.git", branch = "master", features = ["proc", "std"], default-features = false }
