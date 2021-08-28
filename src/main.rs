@@ -9,6 +9,7 @@ use shipyard::{
 };
 use std::process;
 use macroquad::color;
+use turtle_graphics::{Canvas, Turtle};
 
 const WIDTH: i32 = 640;
 const HEIGHT: i32 = 360;
@@ -58,6 +59,9 @@ pub struct Particle {
     pub velocity: Vec2,
     pub position: Point2,
     pub size: f32,
+}
+pub struct Turtle {
+
 }
 
 impl Particle {
@@ -275,7 +279,8 @@ fn drag_particles(mut dragger:UniqueViewMut<ParticleDragger>, mut particles: Vie
     if is_mouse_button_down(MouseButton::Left) {
         dragger.point_x = lerp(dragger.point_x, mouse_x, 0.3);
         dragger.point_y = lerp(dragger.point_y, mouse_y, 0.3);
-        draw_circle_lines(dragger.point_x, dragger.point_y, dragger_radius, 0.5, GRAY);
+        //draw_circle_lines(dragger.point_x, dragger.point_y, dragger_radius, 0.5, GRAY);
+        //draw_line(x1, y1, x2, y2, thickness, color)
         for particle in (&mut particles).iter() {
             if pythag_dist(particle.position.x, particle.position.y, dragger.point_x, dragger.point_y) < dragger_radius{
                 particle.update_velocity_from_mouse(mouse_x - dragger.point_x, mouse_y - dragger.point_y);
@@ -284,6 +289,9 @@ fn drag_particles(mut dragger:UniqueViewMut<ParticleDragger>, mut particles: Vie
     }else{
         dragger.point_x = mouse_x;
         dragger.point_y = mouse_y;
+    }
+    if is_mouse_button_pressed(MouseButton::Right) {
+        add_entity((new_particle(),));
     }
  }
 pub fn pythag_dist(x1: f32, y1: f32, x2: f32, y2: f32,) -> f32 {
