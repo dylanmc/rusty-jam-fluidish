@@ -9,7 +9,7 @@ use shipyard::{
 };
 use std::process;
 use macroquad::color;
-use turtle_graphics::{Canvas, Turtle};
+// use turtle_graphics::{Canvas, Turtle};
 
 const WIDTH: i32 = 640;
 const HEIGHT: i32 = 360;
@@ -60,9 +60,8 @@ pub struct Particle {
     pub position: Point2,
     pub size: f32,
 }
-pub struct Turtle {
-
-}
+// pub struct Turtle {
+// }
 
 impl Particle {
     fn update_pos(&mut self) -> () {
@@ -167,6 +166,12 @@ fn new_particle() -> Particle {
     }
 }
 
+fn new_particle_at(x: f32, y: f32, vx: f32, vy: f32) -> Particle {
+    Particle {position: Point2 {x, y},
+              size: 1.,
+              velocity: Vec2::new(vx, vy)}
+}
+
 fn new_cells() -> Cells {
     let len: usize = CELLS_X as usize * CELLS_Y as usize;
     let mut ret = Vec::with_capacity(len);
@@ -194,7 +199,7 @@ fn init_world(world: &mut World) {
     // create the grid
     // world.add_unique( ... ).unwrap();
 
-    world.bulk_add_entity((0..8000).map(|_| (new_particle(), )));
+    world.bulk_add_entity((0..8).map(|_| (new_particle(), )));
     world.add_unique(new_cells()).unwrap();
     world.add_unique(ParticleDragger{point_x:0.,point_y:0.});
     world.add_unique(GameModeInfo{game_mode: GameMode::Default});
@@ -273,7 +278,9 @@ fn move_particle(mut particles: ViewMut<Particle>) -> Result<(), GameOver> {
     }
     Ok(())
 }
-fn drag_particles(mut dragger:UniqueViewMut<ParticleDragger>, mut particles: ViewMut<Particle>){
+fn drag_particles(mut dragger:UniqueViewMut<ParticleDragger>,
+                  mut particles: ViewMut<Particle>,
+                  mut entities: EntitiesViewMut){
     let (mouse_x, mouse_y) = mouse_position();
     let dragger_radius: f32 = 30.;
     if is_mouse_button_down(MouseButton::Left) {
@@ -281,22 +288,24 @@ fn drag_particles(mut dragger:UniqueViewMut<ParticleDragger>, mut particles: Vie
         dragger.point_y = lerp(dragger.point_y, mouse_y, 0.3);
         //draw_circle_lines(dragger.point_x, dragger.point_y, dragger_radius, 0.5, GRAY);
         //draw_line(x1, y1, x2, y2, thickness, color)
-        for particle in (&mut particles).iter() {
-            if pythag_dist(particle.position.x, particle.position.y, dragger.point_x, dragger.point_y) < dragger_radius{
-                particle.update_velocity_from_mouse(mouse_x - dragger.point_x, mouse_y - dragger.point_y);
-            }
-        }
+        // for particle in (&mut particles).iter() {
+        //     if pythag_dist(particle.position.x, particle.position.y, dragger.point_x, dragger.point_y) < dragger_radius{
+        //         particle.update_velocity_from_mouse(mouse_x - dragger.point_x, mouse_y - dragger.point_y);
+        //     }
+        // }
+        entities.add_entity((particles,), (new_particle_at(mouse_x, mouse_y, 
+                                                            0.2 * (dragger.point_x - mouse_x), 
+                                                            0.2 * (dragger.point_y - mouse_y),),));
     }else{
         dragger.point_x = mouse_x;
         dragger.point_y = mouse_y;
     }
     if is_mouse_button_pressed(MouseButton::Right) {
-        add_entity((new_particle(),));
     }
  }
 pub fn pythag_dist(x1: f32, y1: f32, x2: f32, y2: f32,) -> f32 {
-    let xd = (x2-x1);
-    let yd = (y2-y1);
+    let xd = x2 - x1;
+    let yd = y2 - y1;
     (xd * xd + yd * yd).sqrt()
 }
 fn handle_key_presses(mut game_mode: UniqueViewMut<GameModeInfo>) {
@@ -317,10 +326,12 @@ fn draw_world_grid(game_mode: UniqueView<GameModeInfo>) {
         let cell_width: f32 = WIDTH as f32 / CELLS_X as f32;
         let cell_height: f32 = HEIGHT as f32 / CELLS_Y as f32;
         for x  in 1..CELLS_X {
-            draw_line( x as f32 * cell_width, 0., x as f32 * cell_width, HEIGHT as f32, 0.5, WHITE);
+            draw_line( x as f32 * cell_width, 0., 
+                       x as f32 * cell_width, HEIGHT as f32, 0.5, WHITE);
         }
         for y  in 1..CELLS_Y {
-            draw_line(0., y as f32 * cell_height, WIDTH as f32, y as f32 * cell_height, 0.5, WHITE);
+            draw_line(0., y as f32 * cell_height, 
+                    WIDTH as f32, y as f32 * cell_height, 0.5, WHITE);
         }
     }
 
@@ -328,8 +339,6 @@ fn draw_world_grid(game_mode: UniqueView<GameModeInfo>) {
 
 // have the particles update the cells they're in
 fn update_grid_flow(particles: View<Particle>, mut map:UniqueViewMut<Cells>) -> Result<(), GameOver> {
-    let cell_width: f32 = WIDTH as f32 / CELLS_X as f32;
-    let cell_height: f32 = HEIGHT as f32 / CELLS_Y as f32;
     for particle in particles.iter() {
         let cell_index = particle.get_cell_index();
         map.all_cells[cell_index].update_flow(particle);
@@ -347,7 +356,10 @@ fn apply_grid_updates(mut map:UniqueViewMut<Cells>) -> Result<(), GameOver> {
 
 // render a frame of the world
 // documentation here: https://docs.rs/macroquad/0.3.8/macroquad/
-fn render(particles: View<Particle>, map:UniqueView<Cells>, game_mode: UniqueView<GameModeInfo> ) -> Result<(), GameOver> {
+fn render(particles: View<Particle>, 
+          map:UniqueView<Cells>, 
+          game_mode: UniqueView<GameModeInfo> ) -> Result<(), GameOver>
+{
     for particle in particles.iter() {
         particle.render();
     }
@@ -367,8 +379,6 @@ fn render(particles: View<Particle>, map:UniqueView<Cells>, game_mode: UniqueVie
 }
 
 fn update_particles_vectors(mut particles: ViewMut<Particle>, map:UniqueView<Cells> ) -> Result<(), GameOver> {
-    let cell_width: f32 = WIDTH as f32 / CELLS_X as f32;
-    let cell_height: f32 = HEIGHT as f32 / CELLS_Y as f32;
     for particle in (&mut particles).iter() {
         let cell_index = particle.get_cell_index();
         let cell = &map.all_cells[cell_index];
