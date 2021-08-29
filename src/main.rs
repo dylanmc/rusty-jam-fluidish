@@ -57,16 +57,24 @@ pub fn new_boat(x: f32, y: f32, vx: f32, vy: f32) -> Boat {
 
 impl Boat {
     pub fn render(&mut self) {
-        self.t.direction = (self.vel.y/self.vel.x).atan();
-        self.t.pen_down();
+        self.t.direction = (self.vel.y).atan2(self.vel.x);
+        self.t.pen_up();
         self.t.move_to(self.loc.x, self.loc.y);
-        self.t.forward(10.);
+        //self.t.forward(20.);
+        self.t.pen_down();
+        self.t.turn_right(150.);
+        self.t.forward(15.); //right angle
+        self.t.turn_right(30.);
+        self.t.forward(20.); //right side
         self.t.turn_right(90.);
-        self.t.forward(10.);
+        self.t.forward(15.); // bottom
         self.t.turn_right(90.);
-        self.t.forward(10.);
-        self.t.turn_right(90.);
-        self.t.forward(10.);
+        self.t.forward(20.); //left side
+        self.t.turn_right(30.);
+        self.t.forward(15.); //left angle
+
+
+
     }
 }
 
@@ -91,13 +99,15 @@ pub struct Particle {
 impl Particle {
     fn update_pos(&mut self) -> () {
         self.position.x = self.position.x + self.velocity.x;
+        self.position.y = self.position.y + self.velocity.y;
+
+        // wrap position to screen
         while self.position.x < 0. {
             self.position.x += WIDTH as f32;
         }
         while self.position.x >= (WIDTH as f32) {
             self.position.x -= WIDTH as f32;
         }
-        self.position.y = self.position.y + self.velocity.y;
         while self.position.y < 0. {
             self.position.y += HEIGHT as f32;
         }
@@ -127,6 +137,8 @@ impl Particle {
         self.velocity.x = lerp (self.velocity.x, x, 0.02);
         self.velocity.y = lerp (self.velocity.y, y, 0.02);
     }
+
+    // render a particle and its tail
     fn render(&self) {
         let line_length_multiplier = 8.0;
         let indicator_line_x = self.position.x + self.velocity.x * line_length_multiplier;
@@ -134,6 +146,7 @@ impl Particle {
         let vel_magnitude = pythag_dist(0., 0., self.velocity.x, self.velocity.y);
         let line_color = color::hsl_to_rgb(1.8 - vel_magnitude / 6.,1.,0.5);
         draw_line(self.position.x, self.position.y, indicator_line_x, indicator_line_y, 0.5, line_color);
+        // draw_line(self.position.x, self.position.y,self.position.x + 1., self.position.y + 1., 5., WHITE);
         //TODO: lil arrows lines!
         //draw_line(indicatorLineX, indicatorLineY, 0., 0., 0.5, BLACK);
         //draw_circle(self.position.x, self.position.y, 1.0, BLACK);
@@ -220,7 +233,11 @@ pub struct Turtle {
 
 // creates a new turtle at x,y, pen is up
 pub fn new_turtle() -> Turtle {
-    Turtle { loc: Point2 {x: 0., y: 0.}, direction: 0., pen_down: false, line_width: 10., color: WHITE}
+    Turtle { loc: Point2 {x: 0., y: 0.}, direction: 0., pen_down: false, line_width: 1., color: WHITE}
+}
+
+pub fn rad_to_deg(rads: f32) -> f32{
+    rads * std::f32::consts::PI / 180.
 }
 
 impl Turtle {
@@ -233,10 +250,10 @@ impl Turtle {
         }
     }
     pub fn turn_right(&mut self, degrees: f32) {
-        self.direction += degrees;
+        self.direction += rad_to_deg(degrees);
     }
     pub fn turn_left(&mut self, degrees: f32) {
-        self.direction -= degrees;
+        self.direction -= rad_to_deg(degrees);
     }
     pub fn pen_down(&mut self) {
         self.pen_down = true;
@@ -357,15 +374,22 @@ fn drag_particles(mut dragger: UniqueViewMut<ParticleDragger>,
                   mut player:UniqueViewMut<Boat>,){
     let (mouse_x, mouse_y) = mouse_position();
     if is_mouse_button_down(MouseButton::Left) {
-        dragger.point_x = lerp(dragger.point_x, mouse_x, 0.3);
-        dragger.point_y = lerp(dragger.point_y, mouse_y, 0.3);
+        dragger.point_x = lerp(dragger.point_x, mouse_x, 0.03);
+        dragger.point_y = lerp(dragger.point_y, mouse_y, 0.03);
         player.loc.x = dragger.point_x;
         player.loc.y = dragger.point_y;
         player.vel.x = 0.2 * (mouse_x - dragger.point_x); // set the velocity vector
         player.vel.y = 0.2 * (mouse_y - dragger.point_y);
-        entities.add_entity((particles,), (new_particle_at(mouse_x, mouse_y, 
-                                                            0.2 * (dragger.point_x - mouse_x), 
-                                                            0.2 * (dragger.point_y - mouse_y),),));
+        let dir = (player.vel.y).atan2(player.vel.x);
+        
+        //for i in -10..10{
+            
+        //}
+        let spray_angle = dir + (rand::gen_range(-2.0f32, 2.0f32));
+        
+        entities.add_entity((particles,), (new_particle_at(dragger.point_x, dragger.point_y, 
+            spray_angle.cos() * 0.03 * (dragger.point_x - mouse_x).abs(),
+            spray_angle.sin() * 0.03 * (dragger.point_y - mouse_y).abs(),),));
     }else{
         dragger.point_x = mouse_x;
         dragger.point_y = mouse_y;
