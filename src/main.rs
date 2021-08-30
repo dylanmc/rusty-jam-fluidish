@@ -4,7 +4,7 @@
 
 use macroquad::prelude::*;
 use shipyard::{
-    AddComponent, AllStoragesViewMut, Component, EntitiesViewMut, IntoIter, IntoWithId, SparseSet,
+    Component, EntitiesViewMut, IntoIter,
     UniqueView, UniqueViewMut, View, ViewMut, Workload, World,
 };
 use std::process;
@@ -133,10 +133,11 @@ impl Particle {
         self.velocity.x = lerp (self.velocity.x, cell.flow_v.x, 0.03);
         self.velocity.y = lerp (self.velocity.y, cell.flow_v.y, 0.03);
     }
-    fn update_velocity_from_mouse(&mut self, x: f32, y: f32) {
-        self.velocity.x = lerp (self.velocity.x, x, 0.02);
-        self.velocity.y = lerp (self.velocity.y, y, 0.02);
-    }
+
+    // fn update_velocity_from_mouse(&mut self, x: f32, y: f32) {
+    //     self.velocity.x = lerp (self.velocity.x, x, 0.02);
+    //     self.velocity.y = lerp (self.velocity.y, y, 0.02);
+    // }
 
     // render a particle and its tail
     fn render(&self) {
@@ -492,7 +493,7 @@ fn update_particles_vectors(mut particles: ViewMut<Particle>, map:UniqueView<Cel
 // impl render(&self) for Particle {
 // }
 
-fn clean_up(mut all_storages: AllStoragesViewMut) -> Result<(), GameOver> {
+fn clean_up(/* mut all_storages: AllStoragesViewMut */) -> Result<(), GameOver> {
     Ok(())
 }
 
