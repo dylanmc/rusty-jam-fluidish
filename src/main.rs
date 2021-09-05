@@ -19,9 +19,10 @@ const CELLS_Y: i32 = 12;
 
 #[derive(Debug, Component)]
 enum GameOver {
-    Lose,
-    Victory,
+    Score (i32),
 }
+
+impl std::error::Error for GameOver {}
 
 pub struct Point2 {
     pub x: f32,
@@ -57,7 +58,8 @@ pub fn new_boat(x: f32, y: f32, vx: f32, vy: f32) -> Boat {
 
 impl Boat {
     pub fn render(&mut self) {
-        self.t.direction = (self.vel.y).atan2(self.vel.x);
+        // self.t.direction = (self.vel.y).atan2(self.vel.x);
+        let dir_save = self.t.direction;
         self.t.pen_up();
         self.t.move_to(self.loc.x, self.loc.y);
         //self.t.forward(20.);
@@ -72,9 +74,16 @@ impl Boat {
         self.t.forward(20.); //left side
         self.t.turn_right(30.);
         self.t.forward(15.); //left angle
+        self.t.direction = dir_save;
+    }
 
+    pub fn thrust(&mut self) {
+        // we want to thrust in the direction we're pointed, not in the direction we're moving
+        // so will lerp our velocity between the movement vector and the direction vector (scaled by |vel|)
 
-
+    }
+    pub fn turn(&mut self, degrees: f32) {
+        self.t.direction += degrees;
     }
 }
 
@@ -320,6 +329,7 @@ async fn main() {
         .unwrap();
 
     let mut is_started = false;
+    let mut exiting = false;
     loop {
         if is_started {
 
@@ -329,9 +339,12 @@ async fn main() {
                 .run_default()
                 .map_err(shipyard::error::RunWorkload::custom_error)
             {
+                debug!("match error");
                 match err.downcast_ref::<GameOver>().unwrap() {
-                    GameOver::Lose => debug!("GameOver"),
-                    GameOver::Victory => debug!("Victory"),
+                    GameOver::Score(s) => { 
+                        debug!("GameOver {}", s);
+                        exiting = true;
+                    },
                 }
 
                 is_started = false;
@@ -340,6 +353,9 @@ async fn main() {
             }
         } else {
             if is_mouse_button_pressed(MouseButton::Left) {
+                if exiting {
+                    process::exit(0);
+                }
                 is_started = true;
 
                 unsafe {
@@ -349,7 +365,11 @@ async fn main() {
 
             clear_background(BLACK);
 
-            let text_dimensions = measure_text("Click to start", None, 40, 1.);
+            let text_dimensions = if exiting {
+                   measure_text("Click to start", None, 40, 1.)
+                }else {
+                    measure_text("Click to exit", None, 40, 1.)
+                };
             draw_text(
                 "Click to start",
                 WIDTH as f32 / 2. - text_dimensions.width / 2.,
@@ -370,7 +390,7 @@ fn move_particle(mut particles: ViewMut<Particle>) -> Result<(), GameOver> {
     Ok(())
 }
 fn drag_particles(mut dragger: UniqueViewMut<ParticleDragger>,
-                  mut particles: ViewMut<Particle>,
+                  particles: ViewMut<Particle>,
                   mut entities: EntitiesViewMut,
                   mut player:UniqueViewMut<Boat>,){
     let (mouse_x, mouse_y) = mouse_position();
@@ -407,16 +427,35 @@ pub fn pythag_dist(x1: f32, y1: f32, x2: f32, y2: f32,) -> f32 {
 }
 
 // handle key presses for game mode changes
-fn handle_key_presses(mut game_mode: UniqueViewMut<GameModeInfo>) {
-    if is_key_pressed(KeyCode::Space){
+fn handle_key_presses(mut game_mode: UniqueViewMut<GameModeInfo>,
+                      mut player:UniqueViewMut<Boat>,) -> Result<(), GameOver>
+{
+    if is_key_pressed(KeyCode::D){
         if game_mode.game_mode == GameMode::Debug{
             game_mode.game_mode = GameMode::Default
         }else{
             game_mode.game_mode = GameMode::Debug
         }
     }
+    if is_key_down(KeyCode::Left) {
+        player.turn(-0.1);
+    } else if is_key_down(KeyCode::Right) {
+        player.turn(0.1);
+    }
+    if is_key_down(KeyCode::Up) {
+        player.thrust();
+    }
+    if is_key_down(KeyCode::Space) {
+        // shoot something forward
+    }
+
     if is_key_pressed(KeyCode::Escape){
-        process::exit(1);
+        // somehow this wasn't making it out to run... 
+        // Err(GameOver::Score(100))
+        // so just hard exit here
+        process::exit(0);
+    } else {
+        Ok(())
     }
 }
 
@@ -496,8 +535,6 @@ fn update_particles_vectors(mut particles: ViewMut<Particle>, map:UniqueView<Cel
 fn clean_up(/* mut all_storages: AllStoragesViewMut */) -> Result<(), GameOver> {
     Ok(())
 }
-
-impl std::error::Error for GameOver {}
 
 impl std::fmt::Display for GameOver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
