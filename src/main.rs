@@ -9,7 +9,6 @@ use shipyard::{
 };
 use std::process;
 use macroquad::color;
-// use turtle_graphics::{Canvas, Turtle};
 
 const WIDTH: i32 = 640;
 const HEIGHT: i32 = 360;
@@ -62,7 +61,7 @@ impl Boat {
         let dir_save = self.t.direction;
         self.t.pen_up();
         self.t.move_to(self.loc.x, self.loc.y);
-        //self.t.forward(20.);
+        self.t.forward(20.);
         self.t.pen_down();
         self.t.turn_right(150.);
         self.t.forward(15.); //right angle
@@ -80,7 +79,11 @@ impl Boat {
     pub fn thrust(&mut self) {
         // we want to thrust in the direction we're pointed, not in the direction we're moving
         // so will lerp our velocity between the movement vector and the direction vector (scaled by |vel|)
-
+        let thrust_mag = 0.1 + (self.vel.x * self.vel.x + self.vel.y * self.vel.y).sqrt();
+        let thrust_x = self.t.direction.cos() * thrust_mag;
+        let thrust_y = self.t.direction.sin() * thrust_mag;
+        self.vel.x = lerp (self.vel.x, thrust_x, 0.1);
+        self.vel.y = lerp (self.vel.y, thrust_y, 0.1);
     }
     pub fn turn(&mut self, degrees: f32) {
         self.t.direction += degrees;
@@ -302,7 +305,7 @@ fn init_world(world: &mut World) {
     world.add_unique(new_cells()).unwrap();
     world.add_unique(ParticleDragger{point_x:0.,point_y:0.}).unwrap();
     world.add_unique(GameModeInfo{game_mode: GameMode::Default}).unwrap();
-    world.add_unique(new_boat(WIDTH as f32 / 2., HEIGHT as f32 / 2., 0.5, 0.)).unwrap();
+    world.add_unique(new_boat(WIDTH as f32 / 2., HEIGHT as f32 / 2., 0., 0.)).unwrap();
 }
 
 // Entry point of the program
@@ -317,8 +320,9 @@ async fn main() {
 
     Workload::builder("Game loop")
         .with_system(move_particle)
-        .with_system(drag_particles)
+        // .with_system(drag_particles)
         .with_system(update_grid_flow)
+        .with_system(update_player)
         .with_system(render)
         .with_system(apply_grid_updates)
         .with_system(update_particles_vectors)
@@ -393,29 +397,28 @@ fn drag_particles(mut dragger: UniqueViewMut<ParticleDragger>,
                   particles: ViewMut<Particle>,
                   mut entities: EntitiesViewMut,
                   mut player:UniqueViewMut<Boat>,){
-    let (mouse_x, mouse_y) = mouse_position();
-    if is_mouse_button_down(MouseButton::Left) {
-        dragger.point_x = lerp(dragger.point_x, mouse_x, 0.03);
-        dragger.point_y = lerp(dragger.point_y, mouse_y, 0.03);
-        player.loc.x = dragger.point_x;
-        player.loc.y = dragger.point_y;
-        player.vel.x = 0.2 * (mouse_x - dragger.point_x); // set the velocity vector
-        player.vel.y = 0.2 * (mouse_y - dragger.point_y);
-        let dir = (player.vel.y).atan2(player.vel.x);
+    // let (mouse_x, mouse_y) = mouse_position();
+    // if is_mouse_button_down(MouseButton::Left) {
+    //     dragger.point_x = lerp(dragger.point_x, mouse_x, 0.03);
+    //     dragger.point_y = lerp(dragger.point_y, mouse_y, 0.03);
+    //     player.loc.x = dragger.point_x;
+    //     player.loc.y = dragger.point_y;
+    //     player.vel.x = 0.2 * (mouse_x - dragger.point_x); // set the velocity vector
+    //     player.vel.y = 0.2 * (mouse_y - dragger.point_y);
+    //     let dir = (player.vel.y).atan2(player.vel.x);
         
-        //for i in -10..10{
+    //     //for i in -10..10{
             
-        //}
-        let spray_angle = dir + (rand::gen_range(-2.0f32, 2.0f32));
+    //     //}
+    //     let spray_angle = dir + (rand::gen_range(-2.0f32, 2.0f32));
         
-        entities.add_entity((particles,), (new_particle_at(dragger.point_x, dragger.point_y, 
-            spray_angle.cos() * 0.03 * (dragger.point_x - mouse_x).abs(),
-            spray_angle.sin() * 0.03 * (dragger.point_y - mouse_y).abs(),),));
-    }else{
-        dragger.point_x = mouse_x;
-        dragger.point_y = mouse_y;
-    }
-    player.render();
+    //     entities.add_entity((particles,), (new_particle_at(dragger.point_x, dragger.point_y, 
+    //         spray_angle.cos() * 0.03 * (dragger.point_x - mouse_x).abs(),
+    //         spray_angle.sin() * 0.03 * (dragger.point_y - mouse_y).abs(),),));
+    // }else{
+    //     dragger.point_x = mouse_x;
+    //     dragger.point_y = mouse_y;
+    // }
     if is_mouse_button_pressed(MouseButton::Right) {
     }
 }
@@ -457,6 +460,18 @@ fn handle_key_presses(mut game_mode: UniqueViewMut<GameModeInfo>,
     } else {
         Ok(())
     }
+}
+
+fn update_player(mut player:UniqueViewMut<Boat>,) -> Result<(), GameOver>
+{
+    player.loc.x += player.vel.x;
+    player.loc.y += player.vel.y;
+    while player.loc.x < 0.            { player.loc.x += WIDTH as f32; }
+    while player.loc.x > WIDTH as f32  { player.loc.x -= WIDTH as f32; }
+    while player.loc.y < 0.            { player.loc.y += HEIGHT as f32; }
+    while player.loc.y > HEIGHT as f32 { player.loc.y -= HEIGHT as f32; }
+    player.render();
+    Ok(())
 }
 
 // debugging utility: draw the grid lines
